@@ -17,7 +17,10 @@ private:
     bool moved_away_;
 
 public:
+    /* Multi-server mode. */
     WebServer( const Address & addr, const std::string & working_directory, const std::string & record_path );
+    /* Single-server mode. */
+    WebServer( const std::string & working_directory, const std::string & record_path );
     ~WebServer();
 
     /* ban copying */

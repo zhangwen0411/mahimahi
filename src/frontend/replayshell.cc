@@ -46,8 +46,15 @@ int main( int argc, char *argv[] )
             throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " directory [command...]" );
         }
 
+        bool single_server = false;
+        int ii = 1;
+        if ( strcmp( argv[ 1 ], "--single-server" ) == 0 ) {
+          single_server = true;
+          ii = 2;
+        }
+
         /* clean directory name */
-        string directory = argv[ 1 ];
+        string directory = argv[ ii++ ];
 
         if ( directory.empty() ) {
             throw runtime_error( string( argv[ 0 ] ) + ": directory name must be non-empty" );
@@ -66,10 +73,10 @@ int main( int argc, char *argv[] )
 
         /* what command will we run inside the container? */
         vector< string > command;
-        if ( argc == 2 ) {
+        if ( ii == argc ) {
             command.push_back( shell_path() );
         } else {
-            for ( int i = 2; i < argc; i++ ) {
+            for ( int i = ii; i < argc; i++ ) {
                 command.push_back( argv[ i ] );
             }
         }
@@ -122,8 +129,14 @@ int main( int argc, char *argv[] )
 
         /* set up web servers */
         vector< WebServer > servers;
-        for ( const auto ip_port : unique_ip_and_port ) {
-            servers.emplace_back( ip_port, working_directory, directory );
+        if ( single_server ) {
+          cerr << "[ReplayShell] Running in single-server mode..." << endl;
+          servers.emplace_back( working_directory, directory );
+        } else {
+          cerr << "[ReplayShell] Running in multi-server mode..." << endl;
+          for ( const auto ip_port : unique_ip_and_port ) {
+              servers.emplace_back( ip_port, working_directory, directory );
+          }
         }
 
         /* set up DNS server */
