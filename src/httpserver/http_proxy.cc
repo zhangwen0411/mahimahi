@@ -92,10 +92,9 @@ void HTTPProxy::loop( SocketType & server, SocketType & client, HTTPBackingStore
 void HTTPProxy::handle_tcp( HTTPBackingStore & backing_store )
 {
     thread newthread( [&] ( TCPSocket client ) {
+            /* get original destination for connection request */
+            Address server_addr = client.original_dest();
             try {
-                /* get original destination for connection request */
-                Address server_addr = client.original_dest();
-
                 /* create socket and connect to original destination and send original request */
                 TCPSocket server;
                 server.connect( server_addr );
@@ -105,14 +104,22 @@ void HTTPProxy::handle_tcp( HTTPBackingStore & backing_store )
                 }
 
                 /* handle TLS */
-                SecureSocket tls_server( client_context_.new_secure_socket( move( server ) ) );
-                tls_server.connect();
-
                 SecureSocket tls_client( server_context_.new_secure_socket( move( client ) ) );
+                SecureSocket tls_server( client_context_.new_secure_socket( move( server ) ) );
+
                 tls_client.accept();
+                std::string servername;
+                if ( tls_client.get_sni_servername( servername ) ) {
+                    tls_server.set_sni_servername_sent( servername );
+                }
+
+                // cout << "HAHAHA\t" << server_addr.ip() << "\t" << servername << endl;
+
+                tls_server.connect();
 
                 loop( tls_server, tls_client, backing_store );
             } catch ( const exception & e ) {
+                cout << "LALALA\t" << server_addr.ip() << ":" << server_addr.port() << endl;
                 print_exception( e );
             }
         }, listener_socket_.accept() );
