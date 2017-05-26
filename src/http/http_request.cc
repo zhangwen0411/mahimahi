@@ -19,6 +19,17 @@ void HTTPRequest::calculate_expected_body_size( void )
         }
 
         set_expected_body_size( true, myatoi( get_header_value( "Content-Length" ) ) );
+    } else if ( first_line_.substr( 0, 8 ) == "OPTIONS " ) {
+        if ( has_header( "Transfer-Encoding" ) && get_header_value( "Transfer-Encoding" ) == "chunked" ) {
+            throw runtime_error( "HTTPRequest: does not support chunked requests" );
+        }
+
+        size_t content_length = 0;
+        if ( has_header( "Content-Length" ) ) {
+            content_length = myatoi( get_header_value( "Content-Length" ) );
+        }
+
+        set_expected_body_size( true, content_length );
     } else {
         throw runtime_error( "Cannot handle HTTP method: " + first_line_ );
     }
