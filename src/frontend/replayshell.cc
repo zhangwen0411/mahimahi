@@ -127,22 +127,29 @@ int main( int argc, char *argv[] )
             interface_counter++;
         }
 
-        /* set up web servers */
+        /* set up web servers and DNS server */
         vector< WebServer > servers;
+        TempFile dnsmasq_hosts( "/tmp/replayshell_hosts" );
         if ( single_server ) {
           cerr << "[ReplayShell] Running in single-server mode..." << endl;
-          servers.emplace_back( working_directory, directory );
+          WebServer server( working_directory, directory );
+
+          // DNS server maps all domain names to single IP address.
+          std::string listen_addr = server.get_listen_addr();
+          for ( const auto mapping : hostname_to_ip ) {
+              dnsmasq_hosts.write( listen_addr + " " + mapping.first + "\n" );
+          }
+
+          servers.push_back( move( server ) );
         } else {
           cerr << "[ReplayShell] Running in multi-server mode..." << endl;
           for ( const auto ip_port : unique_ip_and_port ) {
               servers.emplace_back( ip_port, working_directory, directory );
           }
-        }
 
-        /* set up DNS server */
-        TempFile dnsmasq_hosts( "/tmp/replayshell_hosts" );
-        for ( const auto mapping : hostname_to_ip ) {
-            dnsmasq_hosts.write( mapping.second.ip() + " " + mapping.first + "\n" );
+          for ( const auto mapping : hostname_to_ip ) {
+              dnsmasq_hosts.write( mapping.second.ip() + " " + mapping.first + "\n" );
+          }
         }
 
         /* initialize event loop */

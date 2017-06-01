@@ -15,6 +15,7 @@ using namespace std;
 
 WebServer::WebServer( const Address & addr, const string & working_directory, const string & record_path )
     : config_file_( "/tmp/replayshell_apache_config" ),
+      listen_addr_( addr ),
       moved_away_( false )
 {
     config_file_.write( apache_main_config );
@@ -49,6 +50,7 @@ WebServer::WebServer( const Address & addr, const string & working_directory, co
 
 WebServer::WebServer( const std::string & working_directory, const std::string & record_path )
     : config_file_( "/tmp/replayshell_apache_config" ),
+      listen_addr_( "127.127.127.127", 0 ),  // Ignore the port number.  What if already taken?
       moved_away_( false )
 {
     config_file_.write( apache_main_config );
@@ -71,8 +73,9 @@ WebServer::WebServer( const std::string & working_directory, const std::string &
 
     config_file_.write( "Group #" + to_string( getgid() ) + "\n" );
 
-    config_file_.write( "Listen *:80\n" );
-    config_file_.write( "Listen *:443\n" );
+    std::string listen_ip = listen_addr_.ip();
+    config_file_.write( "Listen " + listen_ip + ":80\n" );
+    config_file_.write( "Listen " + listen_ip + ":443\n" );
 
     config_file_.write( "<VirtualHost *:80>\n" );
     config_file_.write( "</VirtualHost>\n" );
@@ -97,6 +100,7 @@ WebServer::~WebServer()
 
 WebServer::WebServer( WebServer && other )
     : config_file_( move( other.config_file_ ) ),
+      listen_addr_( move( other.listen_addr_ ) ),
       moved_away_( false )
 {
     other.moved_away_ = true;

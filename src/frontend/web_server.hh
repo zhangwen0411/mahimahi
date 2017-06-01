@@ -14,6 +14,8 @@ private:
     /* each apache instance needs unique configuration file, error/access logs, and pid file */
     TempFile config_file_;
 
+    Address listen_addr_;
+
     bool moved_away_;
 
 public:
@@ -32,6 +34,8 @@ public:
 
     /* ... but not move assignment operator */
     WebServer & operator=( WebServer && other ) = delete;
+
+    std::string get_listen_addr() const { return listen_addr_.ip(); }
 };
 
 #endif
