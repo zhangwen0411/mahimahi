@@ -4,6 +4,7 @@
 #define WEB_SERVER_HH
 
 #include <string>
+#include <set>
 
 #include "temp_file.hh"
 #include "address.hh"
@@ -14,15 +15,14 @@ private:
     /* each apache instance needs unique configuration file, error/access logs, and pid file */
     TempFile config_file_;
 
-    Address listen_addr_;
-
     bool moved_away_;
 
 public:
     /* Multi-server mode. */
     WebServer( const Address & addr, const std::string & working_directory, const std::string & record_path );
     /* Single-server mode. */
-    WebServer( const std::string & working_directory, const std::string & record_path );
+    WebServer( const std::string & listen_ip, const std::set<uint16_t>& listen_ports,
+               const std::string & working_directory, const std::string & record_path );
     ~WebServer();
 
     /* ban copying */
@@ -34,8 +34,6 @@ public:
 
     /* ... but not move assignment operator */
     WebServer & operator=( WebServer && other ) = delete;
-
-    std::string get_listen_addr() const { return listen_addr_.ip(); }
 };
 
 #endif

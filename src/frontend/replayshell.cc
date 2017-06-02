@@ -94,6 +94,7 @@ int main( int argc, char *argv[] )
         /* collect the IPs, IPs and ports, and hostnames we'll need to serve */
         set< Address > unique_ip;
         set< Address > unique_ip_and_port;
+        set< uint16_t > unique_port;
         vector< pair< string, Address > > hostname_to_ip;
 
         {
@@ -114,17 +115,25 @@ int main( int argc, char *argv[] )
 
                 unique_ip.emplace( address.ip(), 0 );
                 unique_ip_and_port.emplace( address );
+                unique_port.emplace( address.port() );
 
                 hostname_to_ip.emplace_back( HTTPRequest( protobuf.request() ).get_header_value( "Host" ),
                                              address );
             }
         }
 
-        /* set up dummy interfaces */
-        unsigned int interface_counter = 0;
-        for ( const auto ip : unique_ip ) {
-            add_dummy_interface( "sharded" + to_string( interface_counter ), ip );
-            interface_counter++;
+        /* some arbitrary IP address */
+        const std::string single_server_listen_ip( "23.253.180.102" );
+
+        /* set up dummy interface(s) */
+        if ( single_server ) {  /* only need one interface */
+            add_dummy_interface( "external", Address( single_server_listen_ip, 0 ) );
+        } else {
+            unsigned int interface_counter = 0;
+            for ( const auto ip : unique_ip ) {
+                add_dummy_interface( "sharded" + to_string( interface_counter ), ip );
+                interface_counter++;
+            }
         }
 
         /* set up web servers and DNS server */
@@ -132,15 +141,12 @@ int main( int argc, char *argv[] )
         TempFile dnsmasq_hosts( "/tmp/replayshell_hosts" );
         if ( single_server ) {
           cerr << "[ReplayShell] Running in single-server mode..." << endl;
-          WebServer server( working_directory, directory );
+          servers.emplace_back( single_server_listen_ip, unique_port,  working_directory, directory );
 
-          // DNS server maps all domain names to single IP address.
-          std::string listen_addr = server.get_listen_addr();
+          /* DNS server maps all domain names to single IP address. */
           for ( const auto mapping : hostname_to_ip ) {
-              dnsmasq_hosts.write( listen_addr + " " + mapping.first + "\n" );
+              dnsmasq_hosts.write( single_server_listen_ip + " " + mapping.first + "\n" );
           }
-
-          servers.push_back( move( server ) );
         } else {
           cerr << "[ReplayShell] Running in multi-server mode..." << endl;
           for ( const auto ip_port : unique_ip_and_port ) {
